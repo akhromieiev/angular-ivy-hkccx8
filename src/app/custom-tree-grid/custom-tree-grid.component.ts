@@ -10,12 +10,21 @@ import {
   TreeGridComponent,
   FreezeService,
   ColumnChooserService,
-  EditSettingsModel
+  EditSettingsModel,
+  SelectionSettingsModel,
+  RowDDService,
+  ReorderService,
+  ITreeData,
+  Column,
+  ColumnMenuService
 } from '@syncfusion/ej2-angular-treegrid';
-@Component({selector: 'app-custom-tree-grid',
+
+@Component({
+  selector: 'app-custom-tree-grid',
   styleUrls: ['./custom-tree-grid.component.scss'],
   encapsulation: ViewEncapsulation.None,
   providers: [
+    ReorderService,
     EditService,
     SortService,
     ResizeService,
@@ -24,8 +33,10 @@ import {
     ExcelExportService,
     PdfExportService,
     ContextMenuService,
+    ColumnMenuService,
     FreezeService,
-    ColumnChooserService],
+    ColumnChooserService,
+    RowDDService],
   template: `
   <ejs-treegrid 
           id="treegrid"
@@ -33,22 +44,30 @@ import {
           childMapping='subtasks' 
           [dataSource]='data' 
           [allowFiltering]="allowFiltering" 
-          [height]="height" 
           [toolbar]="toolbar"
           [treeColumnIndex]='1'
           [allowSelection]="true"
           [allowPaging]="allowPaging"
           [allowRowDragAndDrop]="allowRowDragAndDrop" 
+          [allowReordering]="true"
           [allowExcelExport]='allowExcelExport'
           [allowPdfExport]='allowPdfExport' 
           [allowSorting]='allowSorting'
           [editSettings]="editSettings"
-          [contextMenuItems]="contextMenuItems" 
+          [allowResizing]="true"
+          [columns]="columns"
+          (rowSelected)="onRowSelected($event)"
           [selectionSettings]='selectionOptions'
-          (beforeCopy)="beforeCopy($event)"
-          (contextMenuClick)='contextMenuClick($event)'
-          (contextMenuOpen)='contextMenuOpen($event)'>
-    <e-columns>
+          (rowDataBound)="onRowDataBound($event)"
+          (actionComplete)='actionComplete($event)'
+          [showColumnMenu]="true"
+          [columnMenuItems]="columnMenuItems"
+          (columnMenuClick)="onColumnMenuClick($event)"
+          (columnMenuOpen)="onColumnMenuOpen($event)"
+          [contextMenuItems]="contextMenuItems" 
+          (contextMenuOpen)='contextMenuOpen($event)'
+          (contextMenuClick)='contextMenuClick($event)'>
+    <!-- <e-columns>
       <e-column field='taskID' headerText='Task ID' isPrimaryKey='true' width='80' [edit]='editSettings' textAlign='Right'
                 editType='numericedit'></e-column>
       <e-column field='taskName' headerText='Task Name' width='190'></e-column>
@@ -57,10 +76,11 @@ import {
       <e-column field='duration' headerText='Duration' width='85' [edit]='editSettings' textAlign='Right' editType='numericedit'></e-column>
       <e-column field='progress' headerText='Progress' width='90' textAlign='Right' [edit]='editSettings' editType='numericedit'></e-column>
       <e-column field='priority' headerText='Priority' width='80' textAlign='Left' editType='stringedit'></e-column>
-    </e-columns>
+    </e-columns> -->
   </ejs-treegrid>`,
 })
 export class CustomTreeGridComponent implements OnInit {
+
   @Input() data: any;
   @Input() height: number = 350;
   @Input() allowPaging = true;
@@ -79,7 +99,14 @@ export class CustomTreeGridComponent implements OnInit {
     allowDeleting: true,
     mode: 'Dialog'
   };
-  selectionOptions = { type: 'Multiple' };
+  columns:any[] = [
+    { field: 'taskID', headerText: 'Task ID', width: 90, textAlign: 'Right', isPrimaryKey: true },
+    { field: 'taskName', headerText: 'Task Name', width: 180, textAlign: 'Left' },
+    { field: 'startDate', headerText: 'Start Date', width: 90, textAlign: 'Right', type: 'date', format: 'yMd' },
+    { field: 'endDate', headerText: 'End Date', width: 90, textAlign: 'Center', type: 'date', format: 'yMd' },
+    { field: 'progress', headerText: 'Progress', width: 80, textAlign: 'Center' },
+    { field: 'duration', headerText: 'Duration', width: 80, textAlign: 'Right' }]
+  selectionOptions: SelectionSettingsModel = { type: 'Multiple', mode: 'Row' };
   contextMenuItems: any[] = [
     {
       text: 'Add', id: 'add', target: '.e-content',
@@ -103,15 +130,23 @@ export class CustomTreeGridComponent implements OnInit {
         { text: 'Next', id: "rowPasteNext" },
         { text: 'Child', id: "rowPasteChild" }
       ]
-    },
+    }
+  ];
+  columnMenuItems = [
     { text: 'Rename Column', id: 'columnRename', target: '.e-headercontent' },
     { text: 'Delete Column', id: 'columnDelete', target: '.e-headercontent' },
     { text: 'Insert Column', id: 'columnInsert', target: '.e-headercontent' }
   ];
+
+
   @ViewChild('treeGrid')
   treeGridObj: TreeGridComponent | undefined;
   toolbar: string[] = [];
   buffer: any = {};
+  selectedRows: any = undefined;
+  rowIndex: any = null;
+  cellIndex: any = null;
+
   constructor() {
   }
 
@@ -121,35 +156,82 @@ export class CustomTreeGridComponent implements OnInit {
     }
   }
 
-  beforeCopy(e: any) {
+  onColumnMenuClick(e: any) {
+    if (!this.treeGridObj?.columns) return;
+    const { index } = e.column;
+
+    if (e.item.id === `columnRename`) {
+
+    }
+    if (e.item.id === `columnDelete`) {
+      if (index > -1) {
+        this.columns.splice(index, 1);
+      }
+    }
+
+    if (e.item.id === `columnInsert`) {
+      // insert colujmn after this
+        this.columns.splice(index + 1, 0,  { field: 'newColumn', headerText: 'New Column'});
+    }
+    this.treeGridObj?.refreshColumns();
+  }
+
+  onColumnMenuOpen(e: any) {
     console.log(e);
   }
+
+  onRowDataBound(args: any) {
+    // if (!(args.data as ITreeData).hasChildRecords) {
+    //   (args.row as HTMLElement).style.backgroundColor = 'green';
+    // }
+  }
+
+  actionComplete(e: any) {
+    // console.log(e);
+  }
+
+  onRowSelected(args: any) {
+    // if (!(args.data as ITreeData).hasChildRecords) {
+    //   if (args.row) {
+    //     (args.row as HTMLElement).style.backgroundColor = 'green';
+    //   }
+
+    // }
+    this.selectedRows = args;
+    // this.treeGridObj?.getSelectedRows().forEach((element: any) => {
+    //   (element as HTMLElement).style.backgroundColor = 'green';
+    // })
+  }
+
+  recursiveCopy = (items: any) => items.map((item: any) => Array.isArray(item) ? this.recursiveCopy(item) : {
+    ...item,
+    taskID: Math.random()
+      .toString(36)
+      .substring(7)
+  });
+
   contextMenuOpen(arg?: any): void {
+    console.log(arg);
     if (!arg || !this.treeGridObj) return;
+    this.rowIndex = arg.rowInfo.rowIndex;
+    this.cellIndex = arg.rowInfo.cellIndex;
 
     let elem: Element = arg.event.target as Element;
     const uid = elem.closest(`.e-row`)?.getAttribute('data-uid');
+
     console.log(uid);
-    // if (uid) {
-
-    //   console.log(this.treeGridObj.grid.getRowObjectFromUID(uid).data)
-    // }
-
-    const rowIndex = arg.rowInfo.rowIndex;
-    const cellIndex = arg.rowInfo.cellIndex;
-
     const rows = <HTMLTableRowElement[]>(this.treeGridObj.getSelectedRows());
-    const selectedRowsIndexes = <number[]>(this.treeGridObj.getSelectedRowIndexes());
-    const selectedRecords = <object[]>(this.treeGridObj.getSelectedRecords());
 
-    // console.log(arg, rows, selectedRowsIndexes, selectedRecords);
-    // hide buttons for multiple case
+    // hide buttons for multiple case edit and add
     if (rows.length > 1) {
       document.querySelectorAll('li#rowEdit')[0].setAttribute('style', 'display: none');
+      document.querySelectorAll('li#add')[0].setAttribute('style', 'display: none');
     } else {
       document.querySelectorAll('li#rowEdit')[0].setAttribute('style', 'display: block');
+      document.querySelectorAll('li#add')[0].setAttribute('style', 'display: block');
     }
 
+    // hide paste if no in buffer
     if (this.buffer?.selectedRecords) {
       document.querySelectorAll('li#rowPaste')[0].setAttribute('style', 'display: block');
     }
@@ -157,6 +239,7 @@ export class CustomTreeGridComponent implements OnInit {
       document.querySelectorAll('li#rowPaste')[0].setAttribute('style', 'display: none');
     }
 
+    // disable enable multi select flag
     if (this.treeGridObj.selectionSettings.type === 'Multiple') {
       document.querySelectorAll('li#rowDisableMultiSelect')[0].setAttribute('style', 'display: block');
       document.querySelectorAll('li#rowEnableMultiSelect')[0].setAttribute('style', 'display: none');
@@ -167,17 +250,13 @@ export class CustomTreeGridComponent implements OnInit {
   }
 
   contextMenuClick(args: any) {
-
     if (!this.treeGridObj) return;
     // get selected rows
     const rows = <HTMLTableRowElement[]>(this.treeGridObj.getSelectedRows());
     const selectedRowsIndexes = <number[]>(this.treeGridObj.getSelectedRowIndexes());
     const selectedRecords = <object[]>(this.treeGridObj.getSelectedRecords());
-    const rowCellIndexes = this.treeGridObj.getSelectedRowCellIndexes();
-    console.log(args);
 
-    // console.log(`clipboard`, this.treeGridObj.clipboardModule);
-
+    // console.log(args, rows)
     // show edit only for single
     if (args.item.id === 'rowEdit') {
       this.treeGridObj?.startEdit(rows[0]);
@@ -191,49 +270,30 @@ export class CustomTreeGridComponent implements OnInit {
     }
 
     if (args.item.id === `rowCopy`) {
-      // this.treeGridObj.copy();
-      const selectedr = this.treeGridObj.getSelectedRows();
-      this.buffer = {
-        selectedRecords: [...selectedRecords]
-      }
-      console.log('buffer', this.buffer);
+      this.buffer = { selectedRecords }
     }
 
     if (args.item.id === `rowCut`) {
-      const selectedr = this.treeGridObj.getSelectedRows();
-      this.buffer = {
-        selectedRecords: [...selectedRecords]
-      }
-      console.log('buffer', this.buffer);
     }
 
-    if (args.item.id === `rowPaste`) {
-      console.log('selectedRowsIndexes', selectedRowsIndexes);
-      console.log(this.buffer.selectedRecords)
+    if (args.item.id === `rowPasteNext`) {
       if (this.buffer && this.buffer.selectedRecords) {
         for (let index = 0; index < this.buffer.selectedRecords.length; index++) {
-          this.treeGridObj.addRecord(this.buffer.selectedRecords[index], selectedRowsIndexes[0]);
+          const newRows = this.recursiveCopy(this.buffer.selectedRecords)
+          this.treeGridObj.addRecord(newRows[index], this.selectedRows?.rowIndex, 'Below');
         }
       }
       this.buffer = {}
-      // if
-      // console.log(selectedRowsIndexes)
-      // console.log(rows, selectedRowsIndexes, rowCellIndexes);
-      // const clipboardModule: any = this.treeGridObj.clipboardModule;
-      // console.log(clipboardModule.copyContent, selectedRowsIndexes)
-      // this.treeGridObj.paste(clipboardModule.copyContent, selectedRowsIndexes[0], 0);
-      // this.treeGridObj.updateRow(rowIndex, clipboardModule.copyContent);
-      // console.log(clipboardModule.copyContent)
-      // this.treeGridObj.paste(clipboardModule.copyContent, rowIndex, 0);
+    }
 
-      // console.log(this.buffer)
-      // console.log(selectedRowsIndexes);
-
-      // for (let index = 0; index < this.buffer.rows.length; index++) {
-      //   this.treeGridObj.addRecord(this.buffer.rows[index], selectedRowsIndexes[0], 'Below');
-      // }
-      // this.buffer = null;
-      // return this.pasteRow(rowObj.rowIndex as number, rowObj.cellIndex as number)
+    if (args.item.id === `rowPasteChild`) {
+      if (this.buffer && this.buffer.selectedRecords) {
+        for (let index = 0; index < this.buffer.selectedRecords.length; index++) {
+          const newRows = this.recursiveCopy(this.buffer.selectedRecords)
+          this.treeGridObj.addRecord(newRows[index], this.selectedRows?.rowIndex, 'Child');
+        }
+      }
+      this.buffer = {}
     }
 
     if (args.item.id === `rowDisableMultiSelect`) {
@@ -243,8 +303,8 @@ export class CustomTreeGridComponent implements OnInit {
     if (args.item.id === `rowEnableMultiSelect`) {
       this.treeGridObj.selectionSettings.type = `Multiple`;
     }
-
     return;
   }
+
 
 }

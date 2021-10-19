@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { sampleData } from './jsontreegriddata';
+import { sampleData, dragData } from './jsontreegriddata';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html'
 })
 export class AppComponent {
-  data = sampleData;
+  data = dragData;
 }
