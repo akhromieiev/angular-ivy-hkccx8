@@ -14,8 +14,6 @@ import {
   SelectionSettingsModel,
   RowDDService,
   ReorderService,
-  ITreeData,
-  Column,
   ColumnMenuService
 } from '@syncfusion/ej2-angular-treegrid';
 
@@ -54,12 +52,11 @@ import {
           [allowPdfExport]='allowPdfExport' 
           [allowSorting]='allowSorting'
           [editSettings]="editSettings"
+          [frozenColumns]="frozenColumnIndex"
           [allowResizing]="true"
           [columns]="columns"
           (rowSelected)="onRowSelected($event)"
           [selectionSettings]='selectionOptions'
-          (rowDataBound)="onRowDataBound($event)"
-          (actionComplete)='actionComplete($event)'
           [showColumnMenu]="true"
           [columnMenuItems]="columnMenuItems"
           (columnMenuClick)="onColumnMenuClick($event)"
@@ -67,16 +64,6 @@ import {
           [contextMenuItems]="contextMenuItems" 
           (contextMenuOpen)='contextMenuOpen($event)'
           (contextMenuClick)='contextMenuClick($event)'>
-    <!-- <e-columns>
-      <e-column field='taskID' headerText='Task ID' isPrimaryKey='true' width='80' [edit]='editSettings' textAlign='Right'
-                editType='numericedit'></e-column>
-      <e-column field='taskName' headerText='Task Name' width='190'></e-column>
-      <e-column field='startDate' headerText='Start Date' width='90' format="yMd" textAlign='Right' editType='datepickeredit'></e-column>
-      <e-column field='endDate' headerText='End Date' width='90' format="yMd" textAlign='Right' editType='datepickeredit'></e-column>
-      <e-column field='duration' headerText='Duration' width='85' [edit]='editSettings' textAlign='Right' editType='numericedit'></e-column>
-      <e-column field='progress' headerText='Progress' width='90' textAlign='Right' [edit]='editSettings' editType='numericedit'></e-column>
-      <e-column field='priority' headerText='Priority' width='80' textAlign='Left' editType='stringedit'></e-column>
-    </e-columns> -->
   </ejs-treegrid>`,
 })
 export class CustomTreeGridComponent implements OnInit {
@@ -93,13 +80,14 @@ export class CustomTreeGridComponent implements OnInit {
   @Input() pageSettings: object = {};
   @Input() editparams: object = {};
   @Input() showColumnChooser = true;
+  frozenColumnIndex = null;
   editSettings: EditSettingsModel = {
     allowEditing: true,
     allowAdding: true,
     allowDeleting: true,
     mode: 'Dialog'
   };
-  columns:any[] = [
+  columns: any[] = [
     { field: 'taskID', headerText: 'Task ID', width: 90, textAlign: 'Right', isPrimaryKey: true },
     { field: 'taskName', headerText: 'Task Name', width: 180, textAlign: 'Left' },
     { field: 'startDate', headerText: 'Start Date', width: 90, textAlign: 'Right', type: 'date', format: 'yMd' },
@@ -135,7 +123,13 @@ export class CustomTreeGridComponent implements OnInit {
   columnMenuItems = [
     { text: 'Rename Column', id: 'columnRename', target: '.e-headercontent' },
     { text: 'Delete Column', id: 'columnDelete', target: '.e-headercontent' },
-    { text: 'Insert Column', id: 'columnInsert', target: '.e-headercontent' }
+    { text: 'Insert Column', id: 'columnInsert', target: '.e-headercontent' },
+    { text: 'Enable Filtering', id: 'enableFiltering', target: '.e-headercontent' },
+    { text: 'Disable Filtering', id: 'disableFiltering', target: '.e-headercontent' },
+    { text: 'Enable Multisorting', id: 'enableMultisorting', target: '.e-headercontent' },
+    { text: 'Disable Multisorting', id: 'disableMultisorting', target: '.e-headercontent' },
+    { text: 'Enable Froze', id: 'enableFroze', target: '.e-headercontent' },
+    { text: 'Disable Froze', id: 'disableFroze', target: '.e-headercontent' }
   ];
 
 
@@ -169,25 +163,53 @@ export class CustomTreeGridComponent implements OnInit {
       }
     }
 
+    if (e.item.id === `enableFiltering`) {
+      this.allowFiltering = true;
+    }
+
+    if (e.item.id === `disableFiltering`) {
+      this.allowFiltering = false;
+    }
+
+    if (e.item.id === `enableMultisorting`) {
+      this.allowSorting = true;
+    }
+
+    if (e.item.id === `disableMultisorting`) {
+      this.allowSorting = false;
+    }
+
+    if (e.item.id === `enableFroze`) {
+      this.frozenColumnIndex = index + 1;
+    }
+
+    if (e.item.id === `disableFroze`) {
+      this.frozenColumnIndex = null;
+    }
+
     if (e.item.id === `columnInsert`) {
       // insert colujmn after this
-        this.columns.splice(index + 1, 0,  { field: 'newColumn', headerText: 'New Column'});
+      this.columns.splice(index + 1, 0, { field: 'newColumn', headerText: 'New Column' });
     }
     this.treeGridObj?.refreshColumns();
   }
 
   onColumnMenuOpen(e: any) {
-    console.log(e);
-  }
+    if (this.allowFiltering) {
+      document.querySelectorAll('li#enableFiltering')[0].setAttribute('style', 'display: none');
+      document.querySelectorAll('li#disableFiltering')[0].setAttribute('style', 'display: block');
+    } else {
+      document.querySelectorAll('li#enableFiltering')[0].setAttribute('style', 'display: block');
+      document.querySelectorAll('li#disableFiltering')[0].setAttribute('style', 'display: none');
+    }
 
-  onRowDataBound(args: any) {
-    // if (!(args.data as ITreeData).hasChildRecords) {
-    //   (args.row as HTMLElement).style.backgroundColor = 'green';
-    // }
-  }
-
-  actionComplete(e: any) {
-    // console.log(e);
+    if (e?.column?.freezeTable === "frozen-left") {
+      document.querySelectorAll('li#enableFroze')[0].setAttribute('style', 'display: none');
+      document.querySelectorAll('li#disableFroze')[0].setAttribute('style', 'display: block');
+    } else {
+      document.querySelectorAll('li#enableFroze')[0].setAttribute('style', 'display: block');
+      document.querySelectorAll('li#disableFroze')[0].setAttribute('style', 'display: none');
+    }
   }
 
   onRowSelected(args: any) {
@@ -211,7 +233,6 @@ export class CustomTreeGridComponent implements OnInit {
   });
 
   contextMenuOpen(arg?: any): void {
-    console.log(arg);
     if (!arg || !this.treeGridObj) return;
     this.rowIndex = arg.rowInfo.rowIndex;
     this.cellIndex = arg.rowInfo.cellIndex;
@@ -219,7 +240,6 @@ export class CustomTreeGridComponent implements OnInit {
     let elem: Element = arg.event.target as Element;
     const uid = elem.closest(`.e-row`)?.getAttribute('data-uid');
 
-    console.log(uid);
     const rows = <HTMLTableRowElement[]>(this.treeGridObj.getSelectedRows());
 
     // hide buttons for multiple case edit and add
@@ -256,7 +276,6 @@ export class CustomTreeGridComponent implements OnInit {
     const selectedRowsIndexes = <number[]>(this.treeGridObj.getSelectedRowIndexes());
     const selectedRecords = <object[]>(this.treeGridObj.getSelectedRecords());
 
-    // console.log(args, rows)
     // show edit only for single
     if (args.item.id === 'rowEdit') {
       this.treeGridObj?.startEdit(rows[0]);

@@ -6,7 +6,7 @@ import { ContextMenuAllModule, ContextMenuModule, ToolbarModule } from '@syncfus
 import { ButtonAllModule, CheckBoxAllModule } from '@syncfusion/ej2-angular-buttons';
 import { DatePickerModule } from '@syncfusion/ej2-angular-calendars';
 import { NumericTextBoxAllModule } from '@syncfusion/ej2-angular-inputs';
-import { TreeGridAllModule } from '@syncfusion/ej2-angular-treegrid';
+import { TreeGridAllModule} from '@syncfusion/ej2-angular-treegrid';
 import { CustomTreeGridComponent } from '../custom-tree-grid.component';
 
 
